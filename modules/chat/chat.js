@@ -1,120 +1,88 @@
 import React, { useEffect, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  SafeAreaView,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform
-} from "react-native";
+import { StyleSheet, Text, View, Button, SafeAreaView, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import { usePubNub } from "pubnub-react";
 
-const Chat = ({ route }) => {
+const Chat = ({
+  route
+}) => {
   // The `route` prop will be passed to us thanks to React Navigation.
   // It will contain our emoji in `route.params.emoji`.
-  const userEmoji = route.params.emoji;
+  const userEmoji = route.params.emoji; // Here we obtain our PubNub instance thanks to using the provider
 
-  // Here we obtain our PubNub instance thanks to using the provider
-  const pubnub = usePubNub();
+  const pubnub = usePubNub(); // In next two statements we define the state needed for our chat
 
-  // In next two statements we define the state needed for our chat
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]);
-
-  // First we need to set our PubNub UUID and subscribe to chat channel.
+  const [messages, setMessages] = useState([]); // First we need to set our PubNub UUID and subscribe to chat channel.
   // We will use `useEffect` hook for that.
+
   useEffect(() => {
     // We need to make sure that PubNub is defined
     if (pubnub) {
       // Set the UUID of our user to their chosen emoji
-      pubnub.setUUID(userEmoji);
-
-      // Create a listener that will push new messages to our `messages` variable
+      pubnub.setUUID(userEmoji); // Create a listener that will push new messages to our `messages` variable
       // using the `setMessages` function.
+
       const listener = {
         message: envelope => {
-          setMessages(msgs => [
-            ...msgs,
-            {
-              id: envelope.message.id,
-              author: envelope.publisher,
-              content: envelope.message.content,
-              timetoken: envelope.timetoken
-            }
-          ]);
+          setMessages(msgs => [...msgs, {
+            id: envelope.message.id,
+            author: envelope.publisher,
+            content: envelope.message.content,
+            timetoken: envelope.timetoken
+          }]);
         }
-      };
+      }; // Add the listener to pubnub instance and subscribe to `chat` channel.
 
-      // Add the listener to pubnub instance and subscribe to `chat` channel.
       pubnub.addListener(listener);
-      pubnub.subscribe({ channels: ["chat"] });
+      pubnub.subscribe({
+        channels: ["chat"]
+      }); // We need to return a function that will handle unsubscription on unmount
 
-      // We need to return a function that will handle unsubscription on unmount
       return () => {
         pubnub.removeListener(listener);
         pubnub.unsubscribeAll();
       };
     }
-  }, [pubnub]);
+  }, [pubnub]); // This function handles sending messages.
 
-  // This function handles sending messages.
   const handleSubmit = () => {
     // Clear the input field.
-    setInput("");
+    setInput(""); // Create the message with random `id`.
 
-    // Create the message with random `id`.
     const message = {
       content: input,
-      id: Math.random()
-        .toString(16)
-        .substr(2)
-    };
+      id: Math.random().toString(16).substr(2)
+    }; // Publish our message to the channel `chat`
 
-    // Publish our message to the channel `chat`
-    pubnub.publish({ channel: "chat", message });
+    pubnub.publish({
+      channel: "chat",
+      message
+    });
   };
 
-  return (
-    <SafeAreaView style={styles.outerContainer}>
-      <KeyboardAvoidingView
-        style={styles.innerContainer}
-        behavior="height"
-        keyboardVerticalOffset={Platform.select({
-          ios: 78,
-          android: 0
-        })}
-      >
+  return <SafeAreaView style={styles.outerContainer}>
+      <KeyboardAvoidingView style={styles.innerContainer} behavior="height" keyboardVerticalOffset={Platform.select({
+      ios: 78,
+      android: 0
+    })}>
         <View style={styles.topContainer}>
-          {messages.map(message => (
-            <View key={message.timetoken} style={styles.messageContainer}>
+          {messages.map(message => <View key={message.timetoken} style={styles.messageContainer}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarContent}>{message.author}</Text>
               </View>
               <View style={styles.messageContent}>
                 <Text>{message.content}</Text>
               </View>
-            </View>
-          ))}
+            </View>)}
         </View>
         <View style={styles.bottomContainer}>
-          <TextInput
-            style={styles.textInput}
-            value={input}
-            onChangeText={setInput}
-            onSubmitEditing={handleSubmit}
-            returnKeyType="send"
-            enablesReturnKeyAutomatically={true}
-            placeholder="Type your message here..."
-          />
+          <TextInput style={styles.textInput} value={input} onChangeText={setInput} onSubmitEditing={handleSubmit} returnKeyType="send" enablesReturnKeyAutomatically={true} placeholder="Type your message here..." />
           <View style={styles.submitButton}>
             {input !== "" && <Button title="Send" onPress={handleSubmit} />}
           </View>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+    </SafeAreaView>;
 };
 
 const styles = StyleSheet.create({
@@ -174,5 +142,4 @@ const styles = StyleSheet.create({
     right: 32
   }
 });
-
 export default Chat;
